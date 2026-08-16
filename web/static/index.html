@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵活公交仿真平台</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- 高德地图 JS API -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=37fd775efb65461887a3b6b8f1610a19"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部标题栏 -->
+        <header id="header">
+            <h1>灵活公交仿真平台</h1>
+            <span class="subtitle">云公交开通区域评估仿真系统</span>
+            <div style="flex:1;"></div>
+            <button id="help-btn" onclick="showHelp()" title="产品介绍">?</button>
+        </header>
+
+        <!-- 产品介绍弹窗 -->
+        <div id="help-modal" class="modal-overlay" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>产品介绍</h2>
+                    <button class="modal-close" onclick="closeHelp()">&times;</button>
+                </div>
+                <div id="help-body" class="modal-body">
+                    <p style="text-align:center;color:#999;">加载中...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-content">
+            <!-- 左侧面板：数据上传 + 参数配置 -->
+            <aside id="left-panel">
+                <!-- 数据上传 -->
+                <section class="panel-section">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <h3 class="section-title" style="margin:0;">数据上传</h3>
+                        <button type="button" class="btn-sample" onclick="loadAllSampleData()" style="font-size:12px;padding:4px 12px;">一键导入样例数据</button>
+                    </div>
+
+                    <div class="upload-group">
+                        <label>OD 数据 (CSV)
+                            <a href="#" class="format-toggle" onclick="toggleFormat('od-format'); return false;">格式说明</a>
+                        </label>
+                        <div id="od-format" class="format-hint hidden">
+                            <div class="format-desc">
+                                <b>支持格式:</b> 需包含列 <code>o_x, o_y, d_x, d_y, total_uv</code><br>
+                                分别表示: 起点经度、起点纬度、终点经度、终点纬度、需求量
+                            </div>
+                            <table class="format-table">
+                                <tr><th>o_x</th><th>o_y</th><th>d_x</th><th>d_y</th><th>total_uv</th></tr>
+                                <tr><td>106.8056</td><td>26.5378</td><td>106.7805</td><td>26.5468</td><td>1523</td></tr>
+                                <tr><td>106.7995</td><td>26.5450</td><td>106.7034</td><td>26.5495</td><td>892</td></tr>
+                            </table>
+                            <a href="#" class="sample-download" onclick="downloadSample('od'); return false;">下载样例 CSV</a>
+                        </div>
+                        <input type="file" id="od-file" accept=".csv" class="file-input">
+                        <div id="od-status" class="status-text">未上传</div>
+                    </div>
+
+                    <div class="upload-group">
+                        <label>站点数据 (CSV / SQL)
+                            <a href="#" class="format-toggle" onclick="toggleFormat('station-format'); return false;">格式说明</a>
+                        </label>
+                        <div id="station-format" class="format-hint hidden">
+                            <div class="format-desc">
+                                <b>CSV 格式:</b> 需包含站点名称、经度、纬度三列<br>
+                                列名支持: <code>name/站名</code>, <code>lng/经度</code>, <code>lat/纬度</code><br>
+                                <b>SQL 格式:</b> 支持 bus_stations.sql 的 INSERT 语句
+                            </div>
+                            <table class="format-table">
+                                <tr><th>name</th><th>lng</th><th>lat</th></tr>
+                                <tr><td>双龙实验小学</td><td>106.7614</td><td>26.5066</td></tr>
+                                <tr><td>小碧营盘</td><td>106.7627</td><td>26.5095</td></tr>
+                            </table>
+                            <a href="#" class="sample-download" onclick="downloadSample('station'); return false;">下载样例 CSV</a>
+                        </div>
+                        <input type="file" id="station-file" accept=".csv,.sql" class="file-input">
+                        <div id="station-status" class="status-text">未上传</div>
+                    </div>
+
+                    <div class="upload-group">
+                        <label>区域边界 (WKT, 可选)
+                            <a href="#" class="format-toggle" onclick="toggleFormat('region-format'); return false;">格式说明</a>
+                        </label>
+                        <div id="region-format" class="format-hint hidden">
+                            <div class="format-desc">
+                                <b>方式一:</b> 直接粘贴 WKT 文本<br>
+                                <b>方式二:</b> 上传 .txt 或 .csv 文件（内容为 WKT）<br>
+                                格式: <code>POLYGON((lng lat, lng lat, ...))</code>
+                            </div>
+                            <table class="format-table">
+                                <tr><th>示例</th></tr>
+                                <tr><td>POLYGON((106.75 26.50, 106.82 26.50, 106.82 26.58, 106.75 26.58, 106.75 26.50))</td></tr>
+                            </table>
+                        </div>
+                        <textarea id="region-wkt-input" rows="3" placeholder="直接粘贴 WKT，或上传文件" class="wkt-input"></textarea>
+                        <div class="region-actions">
+                            <button class="btn-small" onclick="parseRegionWKT()">解析文本</button>
+                            <input type="file" id="region-file" accept=".txt,.csv,.wkt" class="file-input" style="flex:1;margin:0;">
+                        </div>
+                        <div id="region-status" class="status-text">未输入</div>
+                    </div>
+                </section>
+
+                <!-- 仿真参数 -->
+                <section class="panel-section">
+                    <h3 class="section-title">仿真参数</h3>
+
+                    <div class="param-grid">
+                        <div class="param-item">
+                            <label>车辆数</label>
+                            <input type="number" id="p-vehicle-count" value="5" min="1" max="100">
+                        </div>
+                        <div class="param-item">
+                            <label>车速(km/h)</label>
+                            <input type="number" id="p-speed" value="30" min="5" max="80">
+                        </div>
+                        <div class="param-item">
+                            <label>派单周期(秒)</label>
+                            <input type="number" id="p-dispatch" value="30" min="1" max="600">
+                        </div>
+                        <div class="param-item">
+                            <label>最大接驾(m)</label>
+                            <input type="number" id="p-pickup" value="3000" min="100" max="20000" step="100">
+                        </div>
+                        <div class="param-item">
+                            <label>超时阈值(秒)</label>
+                            <input type="number" id="p-timeout" value="1200" min="60" max="7200" step="60">
+                        </div>
+                        <div class="param-item">
+                            <label>方向夹角(度)</label>
+                            <input type="number" id="p-angle" value="120" min="0" max="180">
+                        </div>
+                        <div class="param-item">
+                            <label>单公里成本(元)</label>
+                            <input type="number" id="p-cost" value="14" min="0" step="1">
+                        </div>
+                        <div class="param-item">
+                            <label>停靠策略</label>
+                            <select id="p-strategy">
+                                <option value="idle">就地待命</option>
+                                <option value="cruise">热点巡游</option>
+                                <option value="depot">返回场站</option>
+                            </select>
+                        </div>
+                        <div class="param-item">
+                            <label>距离模式</label>
+                            <select id="p-distance-mode">
+                                <option value="haversine">直线距离</option>
+                                <option value="navigation">导航距离(高德)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- OD 展开参数 -->
+                    <h4 class="sub-title">OD 展开参数</h4>
+                    <div class="param-grid">
+                        <div class="param-item">
+                            <label>时间分布</label>
+                            <select id="p-time-dist">
+                                <option value="uniform">均匀分布</option>
+                                <option value="peak_weighted">高峰加权</option>
+                            </select>
+                        </div>
+                        <div class="param-item">
+                            <label>高峰起始(时)</label>
+                            <input type="number" id="p-peak-start" value="7" min="0" max="23" step="0.5">
+                        </div>
+                        <div class="param-item">
+                            <label>高峰结束(时)</label>
+                            <input type="number" id="p-peak-end" value="9" min="0" max="23" step="0.5">
+                        </div>
+                        <div class="param-item">
+                            <label>高峰权重</label>
+                            <input type="number" id="p-peak-weight" value="3" min="1" max="10" step="0.5">
+                        </div>
+                        <div class="param-item">
+                            <label>最大订单数</label>
+                            <input type="number" id="p-max-orders" value="1000" min="-1" step="1">
+                            <small>-1=不限，建议≤2000</small>
+                        </div>
+                    </div>
+                </section>
+
+                    <!-- 车辆初始位置 -->
+                    <h4 class="sub-title">车辆初始位置</h4>
+                    <div class="vehicle-hint">
+                        <small>点击地图选取坐标，或手动输入。留空则自动分配。</small>
+                    </div>
+                    <div id="vehicle-list" class="vehicle-list">
+                        <!-- 动态生成 -->
+                    </div>
+                    <div class="vehicle-actions">
+                        <button class="btn-small btn-add" onclick="addVehicleRow()">+ 添加车辆</button>
+                        <button class="btn-small btn-map-pick" id="btn-map-pick" onclick="toggleMapPick()">
+                            地图选点
+                        </button>
+                    </div>
+                    <div id="vehicle-count-info" class="status-text"></div>
+                </section>
+
+                <!-- 运行按钮 -->
+                <section class="panel-section">
+                    <button id="btn-run" class="btn-primary" onclick="runSimulation()">
+                        运行仿真
+                    </button>
+                    <div id="progress-wrap" class="progress-wrap hidden">
+                        <div class="progress-bar-bg">
+                            <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+                        </div>
+                        <span id="progress-text" class="progress-text">0%</span>
+                    </div>
+                    <div id="run-status" class="status-text"></div>
+                </section>
+            </aside>
+
+            <!-- 中间：地图 -->
+            <div id="map-container">
+                <div id="map"></div>
+                <!-- 轨迹回放控制条 -->
+                <div id="replay-bar" class="hidden">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <button id="btn-play" onclick="togglePlay()">播放</button>
+                        <input type="range" id="replay-slider" min="0" max="100" value="0"
+                               oninput="seekReplay(this.value)" style="flex:1;min-width:150px;">
+                        <span id="replay-time">0:00:00</span>
+                        <select id="replay-speed" onchange="setReplaySpeed(this.value)">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="5" selected>5x</option>
+                            <option value="10">10x</option>
+                        </select>
+                    </div>
+                    <div id="vehicle-filter" style="margin-top:6px;display:flex;align-items:center;flex-wrap:wrap;"></div>
+                </div>
+            </div>
+
+            <!-- 右侧面板：指标报告 -->
+            <aside id="right-panel">
+                <section class="panel-section">
+                    <h3 class="section-title">指标报告</h3>
+                    <div id="metrics-content">
+                        <p class="placeholder">运行仿真后显示指标</p>
+                    </div>
+                </section>
+
+                <section class="panel-section">
+                    <h3 class="section-title">操作</h3>
+                    <button id="btn-export" class="btn-secondary" onclick="exportCSV()" disabled>
+                        导出 CSV
+                    </button>
+                    <button id="btn-toggle-od" class="btn-secondary" onclick="toggleODLines()">
+                        显示/隐藏 OD 线
+                    </button>
+                </section>
+            </aside>
+        </div>
+    </div>
+
+    <script src="/static/js/map.js"></script>
+    <script src="/static/js/replay.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
