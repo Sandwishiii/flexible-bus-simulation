@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.conda/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 项目特定
+output/
+data/*.xlsx
+data/*.db
+*.log
+
+# 资料文件（不上传）
+资料-*/
+*.docx
+*.doc
+*.zip
+
+# 大文件
+images/snapshoot*.png
+web/static/data/sample_region.csv
+双龙新区_边界.csv
